@@ -33,13 +33,13 @@ class MCTS(object):
         while time.time() - begin < self.calculation_time:
             board_copy = copy.deepcopy(self.board) # 模拟会修改board 所以需要深拷贝
             play_turn_copy = copy.deepcopy(self.play_turn) # 每次模拟都必须按照固定顺序 深拷贝防止顺序被修改
-            self.run_simulation(board_copy, play_turn_copy) # 进行MCTS
+            self.run_simulation(board_copy, play_turn_copy) # 进行MCTS模拟
             simulations += 1
         print("total simulations=", simulations)
 
-        move = self.select_one_move() # 选择最佳着法
-        location = self.board.move_to_location(move)
-        print("Maximum depth searched:", self.max_depth)
+        move = self.select_one_move() # 选择最佳着法 此时棋局已经被模拟填充好了所有下一步着法的次数和概率了
+        location = self.board.move_to_location(move) # 移动到最终选择的位置
+        print("Maximum depth searched:", self.max_depth) # 记录深度
         print("AI move: %d, %d\n" % (location[0], location[1]))
         return move
     def run_simulation(self, board, play_turn):
@@ -50,7 +50,7 @@ class MCTS(object):
         wins = self.wins
         availables = board.availables
         player = self.get_player(play_turn) # 获取当前出手的玩家
-        visited_states = set() # 记录当前路径上的全部着法
+        visited_states = set() # 记录当前路径上的全部着法 这里不是从一开始记录 而是从当下棋局开始记录
         winner = -1 # 赢家给默认值
         expand = True # 是否扩展
         # Simulation
@@ -66,27 +66,27 @@ class MCTS(object):
             board.update(player, move)
 
             # Expand
-            # 每次模拟最多扩展一次，每次扩展只增加一个着法
+            # 每次模拟最多扩展一次，每次扩展只增加一个着法， 这里才会真正影响后面的棋局
             if expand and (player, move) not in plays:
-                expand = False
-                plays[(player, move)] = 0
-                wins[(player, move)] = 0
+                expand = False # 扩展关闭
+                plays[(player, move)] = 0 # 扩展一个未占领的位置
+                wins[(player, move)] = 0 # 扩展一个未占领的位置
                 if t > self.max_depth:
-                    self.max_depth = t
-            visited_states.add((player, move))
-            is_full = not len(availables)
-            win, winner = self.has_a_winner(board)
+                    self.max_depth = t # 也可以认为记录棋盘上棋子数
+            visited_states.add((player, move)) # 当前路径增加
+            is_full = not len(availables) # 是否走满棋局
+            win, winner = self.has_a_winner(board) # 棋局是否有一个胜者
             if is_full or win: # 游戏结束
                 break
-            player = self.get_player(play_turn)
+            player = self.get_player(play_turn) # 没有结束 更换次序 继续往下走
 
         # Back-propagation
-        for player, move in visited_states:
-            if(player, move) not in plays:
+        for player, move in visited_states: # 针对当前路径的走法
+            if(player, move) not in plays: # 还没模拟过的地方 下面就是当前和之前模拟过的位置
                 continue
-            plays[(player, move)] += 1 # 该路径所有着法模拟次数加1
+            plays[(player, move)] += 1 # 扩展的那一步模拟次数加1
             if player == winner:
-                wins[(player, move)] += 1 # 获胜玩家所有着法胜利次数加1
+                wins[(player, move)] += 1 # 扩展那一步如果最终赢了则ai的扩展那一步胜利次数加1
     def get_player(self, players):
         p = players.pop(0)
         players.append(p)
